@@ -5,6 +5,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_KEY || ""
 });
 
+// Hugging Face API endpoint for free inference
+const HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-large";
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY || "";
+
 export interface AIPersonality {
   name: string;
   systemPrompt: string;
@@ -29,7 +33,8 @@ export const AI_PERSONALITIES: Record<string, AIPersonality> = {
   }
 };
 
-export async function generateAIResponse(
+// Hugging Face API call for backup
+async function generateHuggingFaceResponse(
   personality: string,
   gameContext: {
     messages: Array<{ playerName: string; content: string; isAI: boolean }>;
@@ -38,6 +43,79 @@ export async function generateAIResponse(
   }
 ): Promise<string> {
   try {
+    const personalityConfig = AI_PERSONALITIES[personality] || AI_PERSONALITIES.casual;
+    
+    const recentMessages = gameContext.messages.slice(-5).map(msg => 
+      `${msg.playerName}: ${msg.content}`
+    ).join('\n');
+
+    // Create a simple prompt for Hugging Face
+    const prompt = `${personalityConfig.systemPrompt.split('.')[0]}. Recent chat:\n${recentMessages}\nYour response:`;
+
+    const response = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HF_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_length: 50,
+          temperature: 0.9,
+          do_sample: true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HF API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract response from Hugging Face format
+    let responseText = "";
+    if (data && data[0] && data[0].generated_text) {
+      const fullText = data[0].generated_text;
+      // Extract only the new response after "Your response:"
+      const responseStart = fullText.indexOf("Your response:") + 14;
+      responseText = fullText.substring(responseStart).trim();
+    }
+
+    // Clean up and limit length
+    responseText = responseText.split('\n')[0]; // Take first line only
+    responseText = responseText.substring(0, 150); // Limit length
+    
+    return responseText || getFallbackResponse(personality);
+  } catch (error) {
+    console.error("Hugging Face API failed:", error);
+    return getFallbackResponse(personality);
+  }
+}
+
+// Get fallback response based on personality
+function getFallbackResponse(personality: string): string {
+  const fallbacks = {
+    casual: "Yeah, this is fun! 😄",
+    funny: "Haha, you guys are hilarious! 😂",
+    serious: "Interesting discussion so far.",
+    shy: "I... I'm not sure..."
+  };
+  return fallbacks[personality as keyof typeof fallbacks] || "Hey everyone!";
+}
+
+export async function generateAIResponse(
+  personality: string,
+  gameContext: {
+    messages: Array<{ playerName: string; content: string; isAI: boolean }>;
+    players: Array<{ name: string; isAI: boolean }>;
+    gamePhase: string;
+  }
+): Promise<string> {
+  // Try OpenAI first
+  try {
+    console.log("Attempting OpenAI response...");
     const personalityConfig = AI_PERSONALITIES[personality] || AI_PERSONALITIES.casual;
     
     const recentMessages = gameContext.messages.slice(-10).map(msg => 
@@ -72,16 +150,26 @@ Respond naturally to the conversation as your character would. Remember to blend
       temperature: 0.9,
     });
 
-    return response.choices[0].message.content?.trim() || "Hey everyone!";
+    const result = response.choices[0].message.content?.trim();
+    if (result) {
+      console.log("OpenAI response successful");
+      return result;
+    }
   } catch (error) {
-    console.error("AI response generation failed:", error);
-    // Fallback responses based on personality
-    const fallbacks = {
-      casual: "Yeah, this is fun! 😄",
-      funny: "Haha, you guys are hilarious! 😂",
-      serious: "Interesting discussion so far.",
-      shy: "I... I'm not sure..."
-    };
-    return fallbacks[personality as keyof typeof fallbacks] || "Hey everyone!";
+    console.error("OpenAI failed, trying Hugging Face backup:", error);
   }
+
+  // Fallback to Hugging Face if OpenAI fails
+  try {
+    console.log("Attempting Hugging Face response...");
+    const hfResponse = await generateHuggingFaceResponse(personality, gameContext);
+    console.log("Hugging Face response successful");
+    return hfResponse;
+  } catch (error) {
+    console.error("Hugging Face also failed:", error);
+  }
+
+  // Final fallback to static responses
+  console.log("Both APIs failed, using static fallback");
+  return getFallbackResponse(personality);
 }
