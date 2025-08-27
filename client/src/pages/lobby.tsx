@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
+import { DemoAdBanner } from '@/components/ad-banner';
 
 export default function Lobby() {
   const [, setLocation] = useLocation();
@@ -181,6 +182,11 @@ export default function Lobby() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Non-intrusive ad space */}
+        <div className="mt-6">
+          <DemoAdBanner className="max-w-sm mx-auto" />
+        </div>
       </div>
     </div>
   );

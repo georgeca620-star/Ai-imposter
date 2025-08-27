@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChatContainer } from '@/components/chat-container';
 import { VotingModal } from '@/components/voting-modal';
 import { GameResultsModal } from '@/components/game-results-modal';
+import { DemoAdBanner } from '@/components/ad-banner';
 import type { Game, Player, Message } from '@shared/schema';
 
 export default function GamePage() {
@@ -236,11 +237,17 @@ export default function GamePage() {
         {/* Game Content */}
         {game?.status === 'lobby' ? (
           <div className="flex-1 flex items-center justify-center bg-background">
-            <div className="text-center">
+            <div className="text-center max-w-md mx-auto">
               <h2 className="text-2xl font-bold text-foreground mb-4">Waiting for Players</h2>
               <p className="text-muted-foreground mb-8">
                 Need at least 4 players to start. Current: {players.length}
               </p>
+              
+              {/* Small ad while waiting */}
+              <div className="mb-8">
+                <DemoAdBanner />
+              </div>
+              
               {players.length >= 4 && game.createdBy === currentPlayer?.name && (
                 <Button 
                   onClick={handleStartGame}

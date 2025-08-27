@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import type { Player } from '@shared/schema';
+import { DemoAdBanner } from '@/components/ad-banner';
 
 interface GameResultsModalProps {
   results: {
@@ -73,6 +74,11 @@ export function GameResultsModal({ results, onPlayAgain, onReturnToLobby, getPla
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Ad between results and action buttons */}
+          <div className="my-4">
+            <DemoAdBanner />
           </div>
 
           {/* Action Buttons */}

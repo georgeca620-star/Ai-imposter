@@ -133,3 +133,25 @@
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
+
+/* Ad styling */
+.ad-container {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ad-container .adsbygoogle {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Demo ad styling */
+.demo-ad {
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.demo-ad:hover {
+  opacity: 1;
+  transform: scale(1.02);
+}
