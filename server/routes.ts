@@ -242,17 +242,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Need at least 4 players to start" });
       }
 
-      // Add AI player
-      const aiNames = ['Mike_777', 'Sarah_AI', 'Alex_Bot', 'Jamie_X', 'Taylor_99'];
-      const aiName = aiNames[Math.floor(Math.random() * aiNames.length)];
-      
+      // Add AI player with temporary name
       const aiPlayer = await storage.createPlayer({
         gameId,
-        name: aiName,
+        name: 'AI_TEMP',
         isAI: true,
         isConnected: true,
         vote: null
       });
+
+      // Get all players and assign generic names
+      const allPlayers = await storage.getPlayersByGame(gameId);
+      
+      // Shuffle players to randomize who gets which player number
+      const shuffledPlayers = [...allPlayers].sort(() => Math.random() - 0.5);
+      
+      // Assign generic names to all players
+      for (let i = 0; i < shuffledPlayers.length; i++) {
+        await storage.updatePlayer(shuffledPlayers[i].id, {
+          name: `Player ${i + 1}`
+        });
+      }
 
       // Start discussion phase
       const discussionEndTime = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
@@ -263,9 +273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const updatedGame = await storage.getGame(gameId);
-      const allPlayers = await storage.getPlayersByGame(gameId);
+      const updatedPlayers = await storage.getPlayersByGame(gameId);
 
-      res.json({ game: updatedGame, players: allPlayers });
+      res.json({ game: updatedGame, players: updatedPlayers });
     } catch (error) {
       res.status(400).json({ error: "Failed to start game" });
     }
